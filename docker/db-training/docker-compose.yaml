@@ -1,0 +1,98 @@
+version: '3.8'
+
+services:
+  postgres:
+    container_name: postgres_container_traning
+    image: postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DATABASE:-training-database}
+      POSTGRES_USER: ${POSTGRES_DATABASE_USERNAME:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_DATABASE_PASSWORD:-12345678a@A}
+      PGDATA: /data/postgres
+    volumes:
+      - postgres:/data/postgres
+    ports:
+      - "5434:5434"
+    networks:
+      - traning-network
+    restart: unless-stopped
+  pgadmin:
+    container_name: pgadmin_container-training
+    image: dpage/pgadmin4
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-pgadmin4@pgadmin.org}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-admin}
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    volumes:
+      - pgadmin:/var/lib/pgadmin
+
+    ports:
+      - "${PGADMIN_PORT:-5051}:80"
+    networks:
+      - traning-network
+    restart: unless-stopped
+  zookeeper:
+      container_name: zookeeper
+      image: confluentinc/cp-zookeeper:7.4.4
+      environment:
+        ZOOKEEPER_CLIENT_PORT: ${ZOOKEEPER_CLIENT_PORT:-2181}
+        ZOOKEEPER_TICK_TIME: ${ZOOKEEPER_TICK_TIME:-2000}
+      ports:
+        - ${ZOOKEEPER_CLIENT_PORT_M:-2181}:${ZOOKEEPER_CLIENT_PORT:-2181}
+      networks:
+        - traning-network
+  kafka:
+    container_name: kafka
+    image: confluentinc/cp-kafka:7.4.4
+    environment:
+      KAFKA_BROKER_ID: ${KAFKA_BROKER_ID:-1}
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:${ZOOKEEPER_CLIENT_PORT:-2181}
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:${PLAINTEXT_PORT:-9092},PLAINTEXT_HOST://localhost:${PLAINTEXT_HOST_PORT:-29092}
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: ${KAFKA_INTER_BROKER_LISTENER_NAME:-PLAINTEXT}
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: ${KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR:-1}
+      KAFKA_JMX_PORT: ${KAFKA_JMX_PORT:-9997}
+      KAFKA_JMX_OPTS: -Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false -Djava.rmi.server.hostname=kafka -Dcom.sun.management.jmxremote.rmi.port=${KAFKA_JMX_PORT:-9997}
+    ports:
+      - ${PLAINTEXT_HOST_PORT_M:-29092}:${PLAINTEXT_HOST_PORT:-29092}
+      - ${KAFKA_JMX_PORT_M:-9997}:${KAFKA_JMX_PORT:-9997} # metrics
+    networks:
+      - traning-network
+  kafka-ui:
+    container_name: kafka-ui
+    image: provectuslabs/kafka-ui:latest
+    environment:
+      KAFKA_CLUSTERS_0_NAME: first
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:${PLAINTEXT_PORT:-9092}
+      KAFKA_CLUSTERS_0_METRICS_PORT: ${KAFKA_JMX_PORT:-9997}
+      KAFKA_CLUSTERS_0_SCHEMAREGISTRY: http://schemaregistry:${SCHEMAREGISTRY_PORT:-8085}
+    ports:
+      - ${KAFKA_UI_PORT_M:-8080}:${KAFKA_UI_PORT:-8080}
+    networks:
+      - traning-network
+  schemaregistry:
+    container_name: schemaregistry
+    image: confluentinc/cp-schema-registry:7.2.1
+    ports:
+      - ${SCHEMAREGISTRY_PORT_M:-8085}:${SCHEMAREGISTRY_PORT:-8085}
+    environment:
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: PLAINTEXT://kafka:${PLAINTEXT_PORT:-9092}
+      SCHEMA_REGISTRY_KAFKASTORE_SECURITY_PROTOCOL: PLAINTEXT
+      SCHEMA_REGISTRY_HOST_NAME: schemaregistry
+      SCHEMA_REGISTRY_LISTENERS: http://schemaregistry:${SCHEMAREGISTRY_PORT:-8085}
+      SCHEMA_REGISTRY_SCHEMA_REGISTRY_INTER_INSTANCE_PROTOCOL: "http"
+      SCHEMA_REGISTRY_LOG4J_ROOT_LOGLEVEL: INFO
+      SCHEMA_REGISTRY_KAFKASTORE_TOPIC: _schemas
+    networks:
+      - traning-network
+networks:
+  traning-network:
+    driver: bridge
+
+volumes:
+  postgres:
+  pgadmin:
+  zookeeper:
+  kafka:
+  kafka-ui:
+  schemaregistry:
