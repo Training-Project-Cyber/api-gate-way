@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { ClientKafka } from '@nestjs/microservices';
-import { CreateUserDto } from 'src/dto/create-user.dto';
+import { CreateUserDto } from 'src/auth/dto/create-user.dto';
 
 @Injectable()
 export class AuthService {
@@ -9,6 +9,7 @@ export class AuthService {
   ) {}
 
   createUser(createUserDto: CreateUserDto) {
+    console.log('Có chạy hehe');
     this.authClient.emit('create_user', JSON.stringify(createUserDto));
   }
 }
